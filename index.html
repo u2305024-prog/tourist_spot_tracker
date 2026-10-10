@@ -185,15 +185,20 @@ function result(){
   $("rs").innerHTML=`<div class="who"><div class="ph" ${bg(st.photo)}></div><div><b>${esc(st.name)||"Your tour"}</b><div class="m">${n} of ${SPOTS.length} spots · ${p.toFixed(1)}%</div></div></div><div class="bigp">${p.toFixed(1).replace(".0","")}%</div>
   <h3>Who you travelled with</h3>${n?`<div class="gb">${rows.map((r,ri)=>`<div>${ri===0&&r.g&&r.g.ph?`<span class="ph top" ${bg(r.g.ph)}></span>`:""}<span>${esc(r.name)}${r.g&&r.g.p.filter(Boolean).length?`<br><span class="m">${esc(r.g.p.filter(Boolean).join(", "))}</span>`:""}</span><em>${r.pct.toFixed(0)}% <span class="m">(${r.c})</span></em></div><div class="bar"><i style="width:${r.pct}%"></i></div>`).join("")}</div>`:`<p class="m">Go back and tick some spots first.</p>`}
   <h3>Your travel rating</h3><div class="rate">${face(b)}<b>${RT[b]}</b></div>
-  <div class="acts"><button class="pri" id="share">Share</button><button id="pic">Save result as picture</button><button id="edit">Edit my spots</button><button id="again">Start over</button></div>`;
+  <div class="acts"><button class="pri" id="share">Share my result</button><button id="pic">Save result as picture</button><button id="edit">Edit my spots</button><button id="again">Start over</button></div><div id="note" class="m" style="margin-top:10px"></div>`;
   $("share").onclick=share;$("pic").onclick=pic;$("edit").onclick=()=>go(3);
   $("again").onclick=()=>{if(confirm("Clear everything and start again?")){st={name:"",photo:"",groups:[],ticks:{}};save();go(1)}};
 }
 function flash(b,t){const o=b.textContent;b.textContent=t;setTimeout(()=>b.textContent=o,2200)}
+const down=b=>{const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="my-bangladesh-map.png";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)};
+const getPic=async()=>{const c=await makePic(),b=await new Promise(r=>c.toBlob(r,"image/png"));return{b,f:new File([b],"my-bangladesh-map.png",{type:"image/png"})}};
 async function share(){
-  const n=Object.keys(st.ticks).length,p=100*n/SPOTS.length,text=`I have visited ${n} of ${SPOTS.length} tourist spots in Bangladesh (${p.toFixed(1)}%). ${RT[band(p)]} How much have you seen?`;
-  if(navigator.share){try{await navigator.share({title:"Bangladesh Tourist Spot Tracker",text,url:SITE});return}catch(e){if(e&&e.name==="AbortError")return}}
-  try{await navigator.clipboard.writeText(text+" "+SITE);flash($("share"),"Copied. Paste it in your post")}catch(e){prompt("Copy this and paste it in your post:",text+" "+SITE)}}
+  if(!ids)return;const n=Object.keys(st.ticks).length,p=100*n/SPOTS.length,text=`I have visited ${n} of ${SPOTS.length} tourist spots in Bangladesh (${p.toFixed(1)}%). ${RT[band(p)]} Make yours: ${SITE}`;
+  const{b,f}=await getPic();
+  if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:"My Bangladesh Travel Map",text});return}catch(e){if(e&&e.name==="AbortError")return}}
+  down(b);let cp=false;try{await navigator.clipboard.write([new ClipboardItem({"image/png":b})]);cp=true}catch(e){}
+  $("note").innerHTML=`Picture saved${cp?" and copied":""}. Attach it${cp?" (or press Ctrl+V)":""} in your Facebook or other post, and add this caption:<br><b>${esc(text)}</b><br><button id="cc" style="margin-top:6px">Copy caption</button>`;
+  $("cc").onclick=async()=>{try{await navigator.clipboard.writeText(text);flash($("cc"),"Copied")}catch(e){prompt("Copy this caption:",text)}}}
 function wrap(g,t,x,y,w,lh){let l="";for(const wd of t.split(" ")){const nl=l?l+" "+wd:wd;if(g.measureText(nl).width>w&&l){g.fillText(l,x,y);y+=lh;l=wd}else l=nl}g.fillText(l,x,y);return y+lh}
 async function makePic(){
   const c=document.createElement("canvas");c.width=1080;c.height=1350;const g=c.getContext("2d"),F="Georgia,'Times New Roman',serif",ink="#14281d",mute="#5d6f63",dark="#0f5c2c";
@@ -210,9 +215,6 @@ async function makePic(){
     g.fillStyle="#e3e7e0";g.fillRect(792,y+8,250,10);g.fillStyle="#43a047";g.fillRect(792,y+8,250*r.pct/100,10);y+=52});
   g.fillStyle="#bfe0ba";g.fillRect(0,1200,1080,150);g.textAlign="center";g.fillStyle=mute;g.font="26px "+F;g.fillText("Make your own Bangladesh travel map",540,1255);
   g.fillStyle=dark;g.font="bold 32px "+F;g.fillText(SITE.replace(/^https?:\/\//,"").replace(/\/$/,""),540,1305,1000);return c}
-async function pic(){
-  if(!ids)return;(await makePic()).toBlob(async b=>{const f=new File([b],"my-bangladesh-map.png",{type:"image/png"});
-    if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:"My Bangladesh Travel Map"});return}catch(e){if(e&&e.name==="AbortError")return}}
-    const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="my-bangladesh-map.png";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);flash($("pic"),"Picture saved")},"image/png")}
+async function pic(){if(!ids)return;down((await getPic()).b);flash($("pic"),"Picture saved")}
 $("mp3").appendChild($("stage"));
 </script></body></html>
